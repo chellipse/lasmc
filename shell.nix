@@ -7,9 +7,14 @@ let
   # rust = pkgs.rust-bin.stable."1.74.0".default.override {
   #   extensions = [ "rust-src" ];
   # };
-  rust = unstable.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
-    extensions = [ "rust-src" ];
-  });
+
+  rust = unstable.rust-bin.beta.latest.default.override {
+    extensions = [ "rust-src" "rust-analyzer" ];
+  };
+
+  # rust = unstable.rust-bin.stable.latest.default.override {
+      # extensions = [ "rust-src" ];
+  # }
 
 in
   pkgs.mkShell {
@@ -17,7 +22,10 @@ in
     unstable.nixd # language server for nix files
 
     rust # overlay package (unstable)
-    unstable.rust-analyzer
+    # unstable.rust-analyzer
+
+    unstable.sccache
+    unstable.mold
 
     ### dep ###
     # openssl
