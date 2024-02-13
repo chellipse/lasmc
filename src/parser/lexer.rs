@@ -1,28 +1,13 @@
 use regex::Regex;
 
-enum Kind {
-    Code,
-    Data,
-}
-
-enum Content {
-    Expr(Expr),
-    Atom(String),
-}
-
-struct Expr {
-    kind: Kind,
-    content: Vec<Content>,
-}
-
 #[derive(Debug)]
-enum Token {
+pub enum Token {
     LeftParen,
     RightParen,
     Atom(String),
 }
 
-fn lex(input: String) {
+pub fn lex(input: String) -> Vec<Token> {
     let mut result: Vec<Token> = vec![];
 
     let re_leftparen = Regex::new(r"^\(").unwrap();
@@ -61,10 +46,5 @@ fn lex(input: String) {
             },
         }
     }
-
+    result
 }
-
-pub fn parse(input: String) {
-    lex(input);
-}
-

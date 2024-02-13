@@ -4,11 +4,9 @@ use dynasmrt::{ExecutableBuffer, DynasmApi, DynasmLabelApi};
 use std::{io, slice, mem};
 use std::io::Write;
 
-mod parse;
-use parse::parse;
+mod parser;
 
-mod read_file;
-use read_file::read_input_file;
+mod file_reader;
 
 pub extern "sysv64" fn print(buffer: *const u8, length: u64) -> bool {
     io::stdout()
@@ -54,7 +52,7 @@ fn main() {
 
     // println!("\nFinished.");
 
-    let input = read_input_file();
-    parse(input)
+    let input = file_reader::read_input_file();
+    parser::parse(input)
 }
 
