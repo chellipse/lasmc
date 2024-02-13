@@ -4,17 +4,17 @@ let
   pkgs = import <nixos-23.11> { overlays = [ rust_overlay ]; };
   unstable = import <nixos-unstable> { overlays = [ rust_overlay ]; };
 
-  # rust = pkgs.rust-bin.stable."1.74.0".default.override {
-  #   extensions = [ "rust-src" ];
-  # };
-
-  rust = unstable.rust-bin.beta.latest.default.override {
-    extensions = [ "rust-src" "rust-analyzer" ];
-  };
-
   # rust = unstable.rust-bin.stable.latest.default.override {
       # extensions = [ "rust-src" ];
-  # }
+  # };
+
+  # rust = unstable.rust-bin.beta.latest.default.override {
+    # extensions = [ "rust-src" "rust-analyzer" ];
+  # };
+
+  rust = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+    extensions = [ "rust-src" ];
+  });
 
 in
   pkgs.mkShell {
