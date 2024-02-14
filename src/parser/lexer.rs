@@ -1,6 +1,6 @@
 use regex::Regex;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Keyword {
     Quote,
     Atom,

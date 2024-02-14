@@ -15,8 +15,13 @@ pub fn read_input_file() -> String {
 
     let filepath = &args[1]; // the last argument is the file name
 
+    dbg!(filepath);
+
     match read_to_string(filepath) {
         Ok(content) => content,
-        Err(e) => panic!("Failed to read file, err: {}", e),
+        Err(e) => {
+            // panic!("Failed to read file, err: {}", e);
+            filepath.clone()
+        },
     }
 }

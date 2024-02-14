@@ -4,7 +4,7 @@ use lazy_static::lazy_static; // For static HashMap initialization
 mod lexer;
 use lexer::{Token, Keyword};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Kind {
     Code,
     Data,
@@ -38,24 +38,22 @@ lazy_static! {
 }
 
 fn parse_expr(tokens: &[Token], quoted: Kind) -> (usize, Expr) {
-    // println!("{:?}", tokens);
 
     let mut result = Expr {
         kind: quoted.clone(),
         content: vec![],
     };
 
-    let mut quote_tracker = Kind::Code;
+    let mut quote_macro = Kind::Code;
+    let mut quote_word = Kind::Code;
 
     let len = tokens.len();
     let mut i = 0;
     while i < len {
-        println!("{:?}", &tokens[i]);
         match &tokens[i] {
-            // _ => println!("{:?}", &tokens[i]),
             Token::LeftParen => {
                 i += 1;
-                let (y, expr) = parse_expr(&tokens[i..], quote_tracker.clone());
+                let (y, expr) = parse_expr(&tokens[i..], quote_macro.clone());
                 i += y;
                 result.content.push(Content::Expr(expr));
             },
@@ -64,16 +62,61 @@ fn parse_expr(tokens: &[Token], quoted: Kind) -> (usize, Expr) {
                 break
             },
             Token::Quote => {
-                quote_tracker = Kind::Data;
+                quote_macro = Kind::Data;
                 i += 1;
+                match &tokens[i] {
+                    Token::LeftParen => {
+                        let (y, expr) = parse_expr(&tokens[i..], quote_macro.clone());
+                        i += y;
+                        quote_macro = Kind::Code;
+                        result.content.push(Content::Expr(expr));
+                    },
+                    Token::Atom(s) => {
+                        let expr = Expr {
+                            kind: quote_macro.clone(),
+                            content: vec![Content::Atom(s.clone())],
+                        };
+                        i += 1;
+                        result.content.push(Content::Expr(expr));
+                    },
+                    _ => {},
+                }
             },
             Token::Atom(s) => {
-                result.content.push(Content::Atom(s.clone()));
+                if quote_macro == Kind::Data {
+                    let expr = Expr {
+                        kind: quote_macro,
+                        content: vec![Content::Atom(s.clone())],
+                    };
+                    result.content.push(Content::Expr(expr));
+                    quote_macro = Kind::Code;
+                } else {
+                    result.content.push(Content::Atom(s.clone()));
+                }
                 i += 1;
             },
             Token::KW(kw) => {
-                result.content.push(Content::Keyword(*kw));
                 i += 1;
+                if *kw == Keyword::Quote {
+                    match &tokens[i] {
+                        Token::LeftParen => {
+                            let (y, expr) = parse_expr(&tokens[i..], Kind::Data);
+                            i += y;
+                            result = expr;
+                        },
+                        Token::Atom(s) => {
+                            let expr = Expr {
+                                kind: Kind::Data,
+                                content: vec![Content::Atom(s.clone())],
+                            };
+                            i += 1;
+                            result.content.push(Content::Expr(expr));
+                        },
+                        _ => {},
+                    }
+                } else {
+                    result.content.push(Content::Keyword(*kw));
+                }
             },
         }
     }
@@ -83,7 +126,6 @@ fn parse_expr(tokens: &[Token], quoted: Kind) -> (usize, Expr) {
 
 pub fn parse(input: String) {
     let mut lexed = lexer::lex(input);
-    // println!("{:?}", lexed);
 
     // replace Atoms which are a keyword with the Keyword enum
     for token in lexed.iter_mut() {
@@ -93,7 +135,6 @@ pub fn parse(input: String) {
             }
         }
     }
-    println!("{:?}", lexed);
 
     let mut result: Vec<Expr> = vec![];
 
@@ -102,30 +143,37 @@ pub fn parse(input: String) {
         // content: vec![],
     // };
 
-    let mut quote_tracker = Kind::Code;
+    let mut quote_macro = Kind::Code;
     let len = lexed.len();
     let mut i = 0;
 
     while i < len {
-        println!("{:?}", &lexed[i]);
         match &lexed[i] {
-            // _ => println!("{:?}", &lexed[i]),
             Token::LeftParen => {
                 i += 1;
-                let (y, expr) = parse_expr(&lexed[i..], quote_tracker.clone());
+                let (y, expr) = parse_expr(&lexed[i..], quote_macro.clone());
                 i += y;
                 result.push(expr);
+                quote_macro = Kind::Code;
             },
             Token::RightParen => {
                 // i += 1;
                 break;
             },
             Token::Quote => {
-                quote_tracker = Kind::Data;
+                quote_macro = Kind::Data;
                 i += 1;
             },
-            Token::Atom(_) => {
+            Token::Atom(a) => {
                 // result.content.push(Content::Atom(s.clone()));
+                if quote_macro == Kind::Data {
+                    let expr = Expr {
+                        kind: quote_macro,
+                        content: vec![Content::Atom(a.clone())]
+                    };
+                    result.push(expr);
+                    quote_macro = Kind::Code;
+                }
                 i += 1;
             },
             Token::KW(_) => {
@@ -134,6 +182,6 @@ pub fn parse(input: String) {
             },
         }
     }
-    println!("RES: {:#?}", result);
+    dbg!(result);
 }
 
