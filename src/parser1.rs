@@ -7,18 +7,18 @@ use lexer::{Token, Keyword};
 #[derive(Debug, Clone, PartialEq)]
 enum Kind {
     Code,
-    Data,
+    List,
 }
 
 #[derive(Debug)]
 enum Content {
-    Keyword(Keyword),
+    KW(Keyword),
     Atom(String),
-    Expr(Expr),
+    Expr(Expression),
 }
 
 #[derive(Debug)]
-struct Expr {
+struct Expression {
     kind: Kind,
     content: Vec<Content>,
 }

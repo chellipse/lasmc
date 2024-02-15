@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 regex = "1.0"
-dynasm = "2.0.0"
-dynasmrt = "2.0.0"
+# dynasm = "2.0.0"
+# dynasmrt = "2.0.0"
 lazy_static = "1.4.0"
