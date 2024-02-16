@@ -4,7 +4,7 @@
 // use std::{io, slice, mem};
 // use std::io::Write;
 
-mod parser3;
+mod parser;
 
 mod file_reader;
 
@@ -46,6 +46,7 @@ fn main() {
     // code(); // This will execute the `ret` instruction.
 
     let input = file_reader::read_input_file();
-    parser3::parse(input)
+    let cst = parser::parse(input);
+    dbg!(cst);
 }
 

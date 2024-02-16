@@ -17,8 +17,8 @@ pub fn read_input_file() -> String {
 
     match read_to_string(filepath) {
         Ok(content) => content,
-        Err(e) => {
-            // panic!("Failed to read file, err: {}", e);
+        Err(_e) => {
+            // panic!("Failed to read file, err: {}", _e);
             // println!("USING FILEPATH AS CODE: {}", filepath);
             filepath.clone()
         },
