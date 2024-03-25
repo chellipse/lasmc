@@ -13,19 +13,19 @@ let
   # };
 
   rust = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
-    extensions = [ "rust-src" ];
+    extensions = [ "rust-src" "rustc-codegen-cranelift-preview" ];
   });
 
 in
   pkgs.mkShell {
     nativeBuildInputs = [
-    unstable.nixd # language server for nix files
+    # unstable.nixd # language server for nix files
 
     rust # overlay package (unstable)
     # unstable.rust-analyzer
 
-    unstable.sccache
-    unstable.mold
+    # unstable.sccache
+    # unstable.mold
 
     ### dep ###
     # openssl
