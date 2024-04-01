@@ -37,9 +37,9 @@ fn recursive_encode(ops: &mut x64::Assembler, list: &Vec<Expression>) {
             recursive_encode(ops, &l);
         },
         Expression::Atom(s) => {
-            if let Some(op_impl) = PRIME_OP_MAP.get(s) {
+            if let Some(impl_fn) = PRIME_OP_MAP.get(s) {
                 // dbg!(op_impl);
-                op_impl();
+                impl_fn();
             }
         },
     }
@@ -115,38 +115,19 @@ pub fn encode(cst: Vec<Expression>) -> (ExecutableBuffer, extern "C" fn()) {
         ; mov rax, QWORD print as _
         ; call rax
         ; ret
+        // ; ->a:
+        // ; .dword 1_i32 as _
+        // ; .bytes "J".as_bytes()
     );
 
     let entry_ptr = ops.offset();
 
     my_dynasm!(ops
-    );
-
-    my_dynasm!(ops
-        // 0 = value, 8 = link list ptr, 16 = pointer to last element
-        ; push r12
-        ; push r13
-        ;; malloc!(ops, 24)
-        ; mov QWORD [rax], 0xffff as _
-        ; mov [rax+16], rax
-
-        ; mov r12, rax
-        ;; malloc!(ops, 16)
-        ; mov QWORD [r12+8], rax
-
-        ; mov r13, [r12]
-        ; mov r14, [r12+8]
-        ;; show_reg!(ops, r13)
-        ;; show_reg!(ops, r14)
-        ; pop r12
-        ; pop r13
-
-
-        // ; mov rax, ->fn_hello
-        ; lea rax, [->fn_hello]
-        // ;; show_reg!(ops, rax)
+        ; ->a:
+        ; .dword 52859_i32 as _
+        ; lea rdi, [->a]
+        ; mov rax, QWORD print_i32 as _
         ; call rax
-        // ;; show_reg!(ops, rax)
     );
 
     my_dynasm!(ops
@@ -173,5 +154,13 @@ pub extern "sysv64" fn print(buffer: *const u8, length: u64) -> bool {
 pub extern "sysv64" fn print_hex(value: u64) -> bool {
     println!("{:x}", value);
     true
+}
+
+#[allow(dead_code)]
+pub extern "sysv64" fn print_i32(value: *const u8) -> bool {
+    let slice = unsafe { slice::from_raw_parts(value, 4) };
+    let value = i32::from_le_bytes(slice[..4].try_into().unwrap());
+    let mut stdout = io::stdout();
+    write!(stdout, "{}", value).is_ok()
 }
 
