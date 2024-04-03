@@ -2,6 +2,7 @@
 mod lexer;
 use lexer::Token;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Expression {
     Atom(String),

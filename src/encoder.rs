@@ -1,166 +1,132 @@
-use dynasm::dynasm;
-#[allow(unused_imports)] // these are all needed, trust
-use dynasmrt::{ExecutableBuffer, DynasmApi, DynasmLabelApi};
-use dynasmrt::x64;
-
-use std::{io, slice, mem};
-use std::io::Write;
-
-use lazy_static::lazy_static;
-use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
+use std::process::exit;
 
 // local module
 use crate::parser::Expression;
+use asm_lisp::{error, system, warning};
 
-static STRING: &str = "Hello World!";
-
-/// Operator implementations
-fn quote() {
-    println!("This is the quote function.");
+enum Type {
+    Byte,
+    Short,
 }
 
-// Define the type alias
-type FnMap = HashMap<String, fn()>;
-// Define global HashMap of operator implementations
-lazy_static! {
-    static ref PRIME_OP_MAP: FnMap = {
-        let mut m = FnMap::new();
-        m.insert(String::from("quote"), quote);
-        m
-    };
+enum Op {
+    False,
+    Add,
 }
 
-fn recursive_encode(ops: &mut x64::Assembler, list: &Vec<Expression>) {
-    if &list.len() < &1 { todo!() } // should return Nil
-    match &list[0] {
-        Expression::List(l) => {
-            recursive_encode(ops, &l);
+fn list(buf: &mut Vec<u8>, li1: Vec<Expression>) {
+    let mut iter = li1.into_iter();
+    dbg!(&iter);
+
+    let e1 = iter.next();
+    let op = match e1 {
+        None => {Op::False},
+        Some(Expression::Atom(s)) => {
+            match s.as_str() {
+                "+" => {Op::Add},
+                invalid => {
+                    error!("Invalid Operator `{}`", invalid);
+                    exit(1)
+                },
+            }
         },
-        Expression::Atom(s) => {
-            if let Some(impl_fn) = PRIME_OP_MAP.get(s) {
-                // dbg!(op_impl);
-                impl_fn();
+        Some(Expression::List(v)) => {
+            error!("List found where keyword should be! `{:?}`", v);
+            exit(1)
+        },
+    };
+
+    let len = iter.len();
+    match op {
+        Op::False => {todo!()},
+        Op::Add => {
+            match len {
+                2 => {
+                    let lines: [[&str;2];2] = [
+                        ["movq $", ", %rax\n"],
+                        ["add $", ", %rax\n"]
+                    ];
+                    let mut ops = String::new();
+                    for (i, item) in iter.enumerate() {
+                        let val = match item {
+                            Expression::Atom(s) => Some(s),
+                            Expression::List(li2) => {
+                                list(buf, li2);
+                                None
+                            },
+                        };
+                        if let Some(s) = val {
+                            ops.push_str(format!("    {}{}{}",
+                                lines[i][0],
+                                s,
+                                lines[i][1]).as_str());
+                        }
+                    }
+                    let mut vec = Vec::from(ops);
+                    buf.append(&mut vec);
+                }
+                i => {error!("Unsupported number of operands for `+` operator: {}", i)}
             }
         },
     }
 }
 
-// create my_dynasm! as a macro for dynasm! w/ x64 arch
-macro_rules! my_dynasm {
-    ($ops:ident $($t:tt)*) => {
-        dynasm!($ops
-            ; .arch x64
-            $($t)*
-        )
+pub fn encode(cst: Vec<Expression>, _filename: String) {
+    // dbg!(&cst);
+
+    let full_name = format!("ignore/asm.s");
+    let mut file = match File::create(&full_name) {
+        Ok(f) => f,
+        Err(e) => {
+            error!("creating {} resulted in {}", full_name, e);
+            std::process::exit(1);
+        },
+    };
+
+    let mut buf: Vec<u8> = Vec::new();
+    {
+        let mut d1 = Vec::from(".global _start
+
+.text
+
+_start:
+    movq %rsp, %rbp
+
+");
+        buf.append(&mut d1);
     }
-}
 
-macro_rules! setup {
-    ($ops:ident) => {my_dynasm!($ops
-        ; push r12
-        ; push r13
-        ; push r14
-        ; push r15
-    );};
-}
-
-macro_rules! clean_up {
-    ($ops:ident) => {my_dynasm!($ops
-        ; pop r12
-        ; pop r13
-        ; pop r14
-        ; pop r15
-    );};
-}
-
-// create malloc! macro which will allocate <usize> and return a pointer into Rax
-// depends on my_dynasm!
-macro_rules! malloc {
-    ($ops:ident, $usize:expr) => {my_dynasm!($ops
-        ; mov rdi, $usize
-        ; mov rax, QWORD libc::malloc as _
-        ; call rax
-    );};
-}
-
-macro_rules! show_reg {
-    ($ops:ident, $reg:ident) => {my_dynasm!($ops
-        ; mov rdi, $reg
-        ; mov rax, QWORD print_hex as _
-        ; call rax
-    );};
-}
-
-pub fn encode(cst: Vec<Expression>) -> (ExecutableBuffer, extern "C" fn()) {
-    let mut ops = x64::Assembler::new().unwrap();
-
-    for e in cst.iter() {
-        match e {
-            Expression::List(l) => {
-                recursive_encode(&mut ops, l);
+    for item in cst.into_iter() {
+        match item {
+            Expression::List(v) => {
+                list(&mut buf, v);
             },
             Expression::Atom(s) => {
-                println!("Ignoring stray Atom: {}", s);
+                warning!("Top level Atom `{}` ignored.", s);
             },
         }
     }
 
-    my_dynasm!(ops
-        ; ->hello:
-        ; .bytes STRING.as_bytes()
-        ; ->fn_hello:
-        ; lea rdi, [->hello]
-        ; xor esi, esi
-        ; mov sil, BYTE STRING.len() as _
-        ; mov rax, QWORD print as _
-        ; call rax
-        ; ret
-        // ; ->a:
-        // ; .dword 1_i32 as _
-        // ; .bytes "J".as_bytes()
-    );
+    {
+        let mut d1 = Vec::from("
+    movq $60, %rax
+    movq $0, %rdi
+    syscall
 
-    let entry_ptr = ops.offset();
+    pop %rbp
+");
+        buf.append(&mut d1);
+    }
 
-    my_dynasm!(ops
-        ; ->a:
-        ; .dword 52859_i32 as _
-        ; lea rdi, [->a]
-        ; mov rax, QWORD print_i32 as _
-        ; call rax
-    );
+    match file.write_all(&buf) {
+        Ok(_) => {},
+        Err(e) => {
+            error!("writing to {} returned {}", full_name, e);
+        },
+    };
 
-    my_dynasm!(ops
-        ; ret
-    );
-
-
-    let buf: ExecutableBuffer = ops.finalize().unwrap();
-
-    let code: extern "C" fn() = unsafe { mem::transmute(buf.ptr(entry_ptr)) };
-
-    (buf, code)
-}
-
-
-#[allow(dead_code)]
-pub extern "sysv64" fn print(buffer: *const u8, length: u64) -> bool {
-    io::stdout()
-        .write_all(unsafe { slice::from_raw_parts(buffer, length as usize) })
-        .is_ok()
-}
-
-#[allow(dead_code)]
-pub extern "sysv64" fn print_hex(value: u64) -> bool {
-    println!("{:x}", value);
-    true
-}
-
-#[allow(dead_code)]
-pub extern "sysv64" fn print_i32(value: *const u8) -> bool {
-    let slice = unsafe { slice::from_raw_parts(value, 4) };
-    let value = i32::from_le_bytes(slice[..4].try_into().unwrap());
-    let mut stdout = io::stdout();
-    write!(stdout, "{}", value).is_ok()
+    system!("wrote `{}` to `{:?}`", full_name, String::from_utf8(buf));
 }
 

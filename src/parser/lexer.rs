@@ -1,9 +1,11 @@
 
-const LETTERS: [char; 52] = [
+const ACCEPTED_CHARS: [char; 63] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
     'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    '+', '-',
 ];
 const CUT_OFF_CHARS: [char; 3] = ['(', ')', ' '];
 
@@ -16,6 +18,7 @@ pub enum Token {
 
 pub fn lex(input: String) -> Vec<Token> {
     let chars: Vec<char> = input.chars().chain(std::iter::once(' ')).collect();
+    // dbg!(&chars);
 
     let mut output: Vec<Token> = vec![];
 
@@ -31,7 +34,7 @@ pub fn lex(input: String) -> Vec<Token> {
                 output.push(Token::RightParen);
                 i += 1;
             },
-            _ if LETTERS.contains(&chars[i]) => {
+            _ if ACCEPTED_CHARS.contains(&chars[i]) => {
                 let mut l = i.clone();
                 while !CUT_OFF_CHARS.contains(&chars[l]) {
                     l += 1;
@@ -42,5 +45,6 @@ pub fn lex(input: String) -> Vec<Token> {
             _ => { i+=1 },
         }
     }
+    // dbg!(&output);
     output
 }
