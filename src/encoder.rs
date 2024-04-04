@@ -23,7 +23,6 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
 
     let e1 = iter.next();
     let op = match e1 {
-        None => {Op::False},
         Some(Expression::Atom(s)) => {
             match s.as_str() {
                 "+" => {Op::Add},
@@ -35,45 +34,83 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
                 },
             }
         },
+        None => {Op::False},
         Some(Expression::List(v)) => {
             error!("List found where keyword should be! `{:?}`", v);
             exit(1)
         },
     };
 
-    let len = iter.len();
-    match op {
-        Op::False => {todo!()},
+    // let len = iter.len();
+    // match op {
+        // Op::False => {todo!()},
+        // Op::Add => {
+            // match len {
+                // 2 => {
+                    // let lines: [[&str;2];2] = [
+                        // ["movl $", ", %eax"],
+                        // ["addl $", ", %eax"]
+                    // ];
+                    // let mut offset: i32 = 0;
+                    // for (i, item) in iter.enumerate() {
+                        // match item {
+                            // Expression::Atom(s) => {
+                                // ops.push_str(format!("    {}{}{}\n",
+                                    // lines[i][0],
+                                    // s,
+                                    // lines[i][1]).as_str());
+                            // },
+                            // Expression::List(li2) => {
+                                // list(ops, li2);
+                                // offset += 4;
+                                // ops.push_str(format!("    movl %eax, -{}(%rsp)\n", offset).as_str());
+                            // },
+                        // };
+                    // }
+                // }
+                // i => {error!("Unsupported number of operands for `+` operator: {}", i)}
+            // }
+        // },
+        // Op::Sub => {todo!()},
+        // Op::Mul => {todo!()},
+    // }
+
+
+    let asm = match op {
         Op::Add => {
-            match len {
-                2 => {
-                    let lines: [[&str;2];2] = [
-                        ["movl $", ", %eax"],
-                        ["addl $", ", %eax"]
-                    ];
-                    let mut offset: i32 = 0;
-                    for (i, item) in iter.enumerate() {
-                        match item {
-                            Expression::Atom(s) => {
-                                ops.push_str(format!("    {}{}{}\n",
-                                    lines[i][0],
-                                    s,
-                                    lines[i][1]).as_str());
-                            },
-                            Expression::List(li2) => {
-                                list(ops, li2);
-                                offset += 4;
-                                ops.push_str(format!("    movl %eax, -{}(%rsp)\n", offset).as_str());
-                            },
-                        };
-                    }
-                }
-                i => {error!("Unsupported number of operands for `+` operator: {}", i)}
-            }
+            ["addl"]
         },
-        Op::Sub => {todo!()},
+        Op::Sub => {
+            ["subl"]
+        },
         Op::Mul => {todo!()},
+        Op::False => {todo!()},
+    };
+
+    #[allow(unused_mut)] // remove later
+    let mut offset: i32 = 4;
+
+    ops.push_str(format!("    movl $0, -{}(%rsp) # init collect\n", offset).as_str());
+    for (_i, item) in iter.enumerate() {
+        match item {
+            Expression::Atom(s) => {
+                ops.push_str(format!("    {} ${}, -{}(%rsp)\n",
+                    asm[0],
+                    s,
+                    offset,
+                ).as_str());
+            },
+            Expression::List(li2) => {
+                ops.push_str(format!("    subq  ${}, %rsp # pre eval\n", offset).as_str());
+                list(ops, li2);
+                ops.push_str(format!("    movl -4(%rsp), %eax\n").as_str());
+                ops.push_str(format!("    addq  ${}, %rsp # post eval\n", offset).as_str());
+
+                ops.push_str(format!("    {} %eax, -4(%rsp)\n", asm[0]).as_str());
+            },
+        };
     }
+    ops.push_str(format!("    movl -{}(%rsp), %eax # close collect\n", offset).as_str());
 }
 
 pub fn encode(cst: Vec<Expression>, _filename: String) {
