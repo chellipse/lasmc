@@ -1,11 +1,15 @@
+use asm_lisp::warning;
 
-const ACCEPTED_CHARS: [char; 63] = [
+const ACCEPTED_CHARS: [char; 64] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
     'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
     '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    '+', '-',
+    '+', '-', '*',
+];
+const SILENT_CHARS: [char; 2] = [
+    ' ', '\n'
 ];
 const CUT_OFF_CHARS: [char; 3] = ['(', ')', ' '];
 
@@ -42,7 +46,13 @@ pub fn lex(input: String) -> Vec<Token> {
                 output.push(Token::Atom(chars[i..l].iter().collect()));
                 i = l;
             },
-            _ => { i+=1 },
+            _ if SILENT_CHARS.contains(&chars[i]) => {
+                i+=1;
+            },
+            ignored_char => {
+                warning!("Unknown char ignored! `{}`", ignored_char);
+                i+=1;
+            },
         }
     }
     // dbg!(&output);

@@ -6,19 +6,21 @@ use std::process::exit;
 use crate::parser::Expression;
 use asm_lisp::{error, system, warning};
 
-enum Type {
-    Byte,
-    Short,
-}
+// enum Type {
+    // Byte,
+    // Short,
+// }
 
 enum Op {
     False,
     Add,
+    Sub,
+    Mul,
 }
 
-fn list(buf: &mut Vec<u8>, li1: Vec<Expression>) {
+fn list(ops: &mut String, li1: Vec<Expression>) {
     let mut iter = li1.into_iter();
-    dbg!(&iter);
+    // dbg!(&iter);
 
     let e1 = iter.next();
     let op = match e1 {
@@ -26,6 +28,8 @@ fn list(buf: &mut Vec<u8>, li1: Vec<Expression>) {
         Some(Expression::Atom(s)) => {
             match s.as_str() {
                 "+" => {Op::Add},
+                "-" => {Op::Sub},
+                "*" => {Op::Mul},
                 invalid => {
                     error!("Invalid Operator `{}`", invalid);
                     exit(1)
@@ -45,31 +49,35 @@ fn list(buf: &mut Vec<u8>, li1: Vec<Expression>) {
             match len {
                 2 => {
                     let lines: [[&str;2];2] = [
-                        ["movq $", ", %rax\n"],
-                        ["add $", ", %rax\n"]
+                        ["movl $", ", %rax"],
+                        ["addl $", ", %rax"]
                     ];
-                    let mut ops = String::new();
+                    let mut offset: i32 = 0;
                     for (i, item) in iter.enumerate() {
-                        let val = match item {
-                            Expression::Atom(s) => Some(s),
+                        match item {
+                            Expression::Atom(s) => {
+                                // dbg!(&s);
+                                dbg!("Atom!");
+                                ops.push_str(format!("    {}{}{}\n",
+                                    lines[i][0],
+                                    s,
+                                    lines[i][1]).as_str());
+                            },
                             Expression::List(li2) => {
-                                list(buf, li2);
-                                None
+                                // dbg!(&li2);
+                                list(ops, li2);
+                                dbg!("List!");
+                                offset += 4;
+                                ops.push_str(format!("movl %eax, -{}(%rsp)\n", offset).as_str());
                             },
                         };
-                        if let Some(s) = val {
-                            ops.push_str(format!("    {}{}{}",
-                                lines[i][0],
-                                s,
-                                lines[i][1]).as_str());
-                        }
                     }
-                    let mut vec = Vec::from(ops);
-                    buf.append(&mut vec);
                 }
                 i => {error!("Unsupported number of operands for `+` operator: {}", i)}
             }
         },
+        Op::Sub => {todo!()},
+        Op::Mul => {todo!()},
     }
 }
 
@@ -92,7 +100,9 @@ pub fn encode(cst: Vec<Expression>, _filename: String) {
 .text
 
 _start:
+    pushq %rbp
     movq %rsp, %rbp
+	subq	$0, %rsp
 
 ");
         buf.append(&mut d1);
@@ -101,7 +111,11 @@ _start:
     for item in cst.into_iter() {
         match item {
             Expression::List(v) => {
-                list(&mut buf, v);
+                let mut ops = String::new();
+                list(&mut ops, v);
+                let mut vec = Vec::from(ops);
+                println!("{:?}", &vec);
+                buf.append(&mut vec);
             },
             Expression::Atom(s) => {
                 warning!("Top level Atom `{}` ignored.", s);
@@ -115,7 +129,9 @@ _start:
     movq $0, %rdi
     syscall
 
-    pop %rbp
+	addq	$0, %rsp
+    popq  %rbp
+    retq
 ");
         buf.append(&mut d1);
     }
