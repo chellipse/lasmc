@@ -20,7 +20,6 @@ enum Op {
 
 fn list(ops: &mut String, li1: Vec<Expression>) {
     let mut iter = li1.into_iter();
-    // dbg!(&iter);
 
     let e1 = iter.next();
     let op = match e1 {
@@ -49,26 +48,22 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
             match len {
                 2 => {
                     let lines: [[&str;2];2] = [
-                        ["movl $", ", %rax"],
-                        ["addl $", ", %rax"]
+                        ["movl $", ", %eax"],
+                        ["addl $", ", %eax"]
                     ];
                     let mut offset: i32 = 0;
                     for (i, item) in iter.enumerate() {
                         match item {
                             Expression::Atom(s) => {
-                                // dbg!(&s);
-                                dbg!("Atom!");
                                 ops.push_str(format!("    {}{}{}\n",
                                     lines[i][0],
                                     s,
                                     lines[i][1]).as_str());
                             },
                             Expression::List(li2) => {
-                                // dbg!(&li2);
                                 list(ops, li2);
-                                dbg!("List!");
                                 offset += 4;
-                                ops.push_str(format!("movl %eax, -{}(%rsp)\n", offset).as_str());
+                                ops.push_str(format!("    movl %eax, -{}(%rsp)\n", offset).as_str());
                             },
                         };
                     }
@@ -82,7 +77,6 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
 }
 
 pub fn encode(cst: Vec<Expression>, _filename: String) {
-    // dbg!(&cst);
 
     let full_name = format!("ignore/asm.s");
     let mut file = match File::create(&full_name) {
