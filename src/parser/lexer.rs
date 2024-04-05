@@ -1,4 +1,4 @@
-use asm_lisp::warning;
+use lasmc::warning;
 
 const ACCEPTED_CHARS: [char; 64] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',

@@ -1,7 +1,7 @@
 mod parser;
 mod encoder;
 
-use asm_lisp::{get_args, read_input_file};
+use lasmc::{get_args, read_input_file};
 
 fn main() {
     let args = get_args();

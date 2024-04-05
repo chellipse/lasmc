@@ -4,7 +4,7 @@ use std::process::exit;
 
 // local module
 use crate::parser::Expression;
-use asm_lisp::{error, system, warning};
+use lasmc::{error, system, warning};
 
 // enum Type {
     // Byte,

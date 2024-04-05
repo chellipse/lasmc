@@ -2,7 +2,7 @@
 mod lexer;
 use lexer::Token;
 
-use asm_lisp::{error, warning};
+use lasmc::{error, warning};
 
 #[allow(dead_code)]
 #[derive(Debug)]
