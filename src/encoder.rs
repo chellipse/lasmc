@@ -41,41 +41,6 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
         },
     };
 
-    // let len = iter.len();
-    // match op {
-        // Op::False => {todo!()},
-        // Op::Add => {
-            // match len {
-                // 2 => {
-                    // let lines: [[&str;2];2] = [
-                        // ["movl $", ", %eax"],
-                        // ["addl $", ", %eax"]
-                    // ];
-                    // let mut offset: i32 = 0;
-                    // for (i, item) in iter.enumerate() {
-                        // match item {
-                            // Expression::Atom(s) => {
-                                // ops.push_str(format!("    {}{}{}\n",
-                                    // lines[i][0],
-                                    // s,
-                                    // lines[i][1]).as_str());
-                            // },
-                            // Expression::List(li2) => {
-                                // list(ops, li2);
-                                // offset += 4;
-                                // ops.push_str(format!("    movl %eax, -{}(%rsp)\n", offset).as_str());
-                            // },
-                        // };
-                    // }
-                // }
-                // i => {error!("Unsupported number of operands for `+` operator: {}", i)}
-            // }
-        // },
-        // Op::Sub => {todo!()},
-        // Op::Mul => {todo!()},
-    // }
-
-
     let asm = match op {
         Op::Add => {
             ["addl"]
