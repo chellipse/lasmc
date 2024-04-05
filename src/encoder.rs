@@ -53,47 +53,22 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
     };
 
     let asm = match op {
-        Op::Add => {
-            ["addl"]
-        },
-        Op::Sub => {
-            ["subl"]
-        },
-        Op::Mul => {
-            ["imul"]
-        },
+        Op::Add =>   {["addl"]},
+        Op::Sub =>   {["subl"]},
+        Op::Mul =>   {["imul"]},
         Op::False => {todo!()},
     };
 
-    #[allow(unused_mut, unused_variables)] // remove later
-    let mut offset: i32 = 0;
+    // #[allow(unused_mut, unused_variables)] // remove later
+    // let mut offset: i32 = 0;
 
     for (i, item) in iter.enumerate() {
         match item {
             Expression::Atom(s) => {
-                match op {
-                    Op::Add => {
-                        if i == 0 {
-                            code!(ops, "    movl ${}, %eax\n", s);
-                        } else {
-                            code!(ops, "    addl ${}, %eax\n",  s);
-                        }
-                    },
-                    Op::Sub => {
-                        if i == 0 {
-                            code!(ops, "    movl ${}, %eax\n", s);
-                        } else {
-                            code!(ops, "    subl ${}, %eax\n", s);
-                        }
-                    },
-                    Op::Mul => {
-                        if i == 0 {
-                            code!(ops, "    movl ${}, %eax\n", s);
-                        } else {
-                            code!(ops, "    imul ${}, %eax\n",  s);
-                        }
-                    },
-                    Op::False => {todo!()},
+                if i == 0 {
+                    code!(ops, "    movl ${}, %eax\n", s);
+                } else {
+                    code!(ops, "    {} ${}, %eax\n", asm[0], s);
                 }
             },
             Expression::List(li2) => {
