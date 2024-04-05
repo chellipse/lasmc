@@ -2,6 +2,8 @@
 mod lexer;
 use lexer::Token;
 
+use asm_lisp::{error, warning};
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum Expression {
@@ -52,10 +54,10 @@ pub fn parse(input: String) -> Vec<Expression> {
                 output.push(recursive_output);
             },
             Token::RightParen => {
-                panic!("Unmatched ')' at {}", i);
+                error!("Unmatched ')' at {}", i);
             },
             Token::Atom(_) => {
-                eprintln!("Ignored Atom at {}", i);
+                warning!("Ignored Atom at {}", i);
                 i += 1;
             },
         }

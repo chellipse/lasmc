@@ -26,10 +26,10 @@ macro_rules! warning {
 #[macro_export]
 macro_rules! system {
     ($fmt:expr) => (
-    eprintln!("{}system{} at `{}`[{}:{}]: {}", $crate::SYSTEM, $crate::RESET, file!(), line!(), column!(), $fmt)
+    println!("{}system{} at `{}`[{}:{}]: {}", $crate::SYSTEM, $crate::RESET, file!(), line!(), column!(), $fmt)
 );
     ($fmt:expr, $($arg:tt)*) => (
-    eprintln!("{}system{} at `{}`[{}:{}]: {}", $crate::SYSTEM, $crate::RESET, file!(), line!(), column!(), format!($fmt, $($arg)*))
+    println!("{}system{} at `{}`[{}:{}]: {}", $crate::SYSTEM, $crate::RESET, file!(), line!(), column!(), format!($fmt, $($arg)*))
 )
 }
 

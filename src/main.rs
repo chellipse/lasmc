@@ -1,5 +1,4 @@
 mod parser;
-mod file_reader;
 mod encoder;
 
 use asm_lisp::{get_args, read_input_file};
