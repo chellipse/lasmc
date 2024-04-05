@@ -4,6 +4,8 @@ use std::process::exit;
 
 // local module
 use crate::parser::Expression;
+
+#[allow(unused_imports)]
 use lasmc::{error, system, warning};
 
 // enum Type {
@@ -16,6 +18,15 @@ enum Op {
     Add,
     Sub,
     Mul,
+}
+
+macro_rules! code {
+    ($ops:ident, $fmt:expr) => (
+        $ops.push_str($fmt);
+    );
+    ($ops:ident, $fmt:expr, $($arg:tt)*) => (
+        $ops.push_str(format!($fmt, $($arg)*).as_str());
+    )
 }
 
 fn list(ops: &mut String, li1: Vec<Expression>) {
@@ -48,34 +59,56 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
         Op::Sub => {
             ["subl"]
         },
-        Op::Mul => {todo!()},
+        Op::Mul => {
+            ["imul"]
+        },
         Op::False => {todo!()},
     };
 
-    #[allow(unused_mut)] // remove later
-    let mut offset: i32 = 4;
+    #[allow(unused_mut, unused_variables)] // remove later
+    let mut offset: i32 = 0;
 
-    ops.push_str(format!("    movl $0, -{}(%rsp) # init collect\n", offset).as_str());
-    for (_i, item) in iter.enumerate() {
+    for (i, item) in iter.enumerate() {
         match item {
             Expression::Atom(s) => {
-                ops.push_str(format!("    {} ${}, -{}(%rsp)\n",
-                    asm[0],
-                    s,
-                    offset,
-                ).as_str());
+                match op {
+                    Op::Add => {
+                        if i == 0 {
+                            code!(ops, "    movl ${}, %eax\n", s);
+                        } else {
+                            code!(ops, "    addl ${}, %eax\n",  s);
+                        }
+                    },
+                    Op::Sub => {
+                        if i == 0 {
+                            code!(ops, "    movl ${}, %eax\n", s);
+                        } else {
+                            code!(ops, "    subl ${}, %eax\n", s);
+                        }
+                    },
+                    Op::Mul => {
+                        if i == 0 {
+                            code!(ops, "    movl ${}, %eax\n", s);
+                        } else {
+                            code!(ops, "    imul ${}, %eax\n",  s);
+                        }
+                    },
+                    Op::False => {todo!()},
+                }
             },
             Expression::List(li2) => {
-                ops.push_str(format!("    subq  ${}, %rsp # pre eval\n", offset).as_str());
-                list(ops, li2);
-                ops.push_str(format!("    movl -4(%rsp), %eax\n").as_str());
-                ops.push_str(format!("    addq  ${}, %rsp # post eval\n", offset).as_str());
-
-                ops.push_str(format!("    {} %eax, -4(%rsp)\n", asm[0]).as_str());
+                if i == 0 {
+                    list(ops, li2);
+                } else {
+                    code!(ops, "    pushq %rax\n");
+                    list(ops, li2);
+                    code!(ops, "    movl %eax, %ecx\n");
+                    code!(ops, "    popq %rax\n");
+                    code!(ops, "    {} %ecx, %eax\n", asm[0]);
+                }
             },
         };
     }
-    ops.push_str(format!("    movl -{}(%rsp), %eax # close collect\n", offset).as_str());
 }
 
 pub fn encode(cst: Vec<Expression>, _filename: String) {
@@ -110,7 +143,7 @@ _start:
                 let mut ops = String::new();
                 list(&mut ops, v);
                 let mut vec = Vec::from(ops);
-                println!("{:?}", &vec);
+                // println!("{:?}", &vec);
                 buf.append(&mut vec);
             },
             Expression::Atom(s) => {
@@ -118,6 +151,12 @@ _start:
             },
         }
     }
+
+    // {
+        // let ops = String::from("\r\n");
+        // let mut vec = Vec::from(ops);
+        // println!("{:?}", &vec);
+    // }
 
     {
         let mut d1 = Vec::from("
@@ -139,6 +178,6 @@ _start:
         },
     };
 
-    system!("wrote `{}` to `{:?}`", full_name, String::from_utf8(buf));
+    // system!("wrote `{}` to `{:?}`", full_name, String::from_utf8(buf));
 }
 

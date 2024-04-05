@@ -8,6 +8,7 @@ fn main() {
     // dbg!(&args);
 
     let input = read_input_file(args.file_path);
+    dbg!(&input);
     let cst = parser::parse(input);
     // dbg!(&cst);
 
