@@ -1,6 +1,9 @@
 mod parser;
 mod encoder;
 
+#[allow(unused_imports)]
+use lasmc::{error, system, warning};
+
 use lasmc::{get_args, read_input_file};
 
 fn main() {
