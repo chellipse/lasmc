@@ -37,24 +37,23 @@ struct Variable {
 }
 
 macro_rules! code {
-    ($ops:ident, $fmt:expr) => (
-        $ops.push_str($fmt);
+    ($cs:ident, $fmt:expr) => (
+        $cs.ops.push_str($fmt);
     );
-    ($ops:ident, $fmt:expr, $($arg:tt)*) => (
-        $ops.push_str(format!($fmt, $($arg)*).as_str());
+    ($cs:ident, $fmt:expr, $($arg:tt)*) => (
+        $cs.ops.push_str(format!($fmt, $($arg)*).as_str());
     )
 }
 
 #[derive(Debug)]
-struct CompState {
+struct CompilationState {
     ops: String,
-    cst: Vec<Expression>,
     offset: i32,
-    state: HashMap<String, Variable>,
+    var_map: HashMap<String, Variable>,
 }
 
-fn eval(ops: &mut String, li1: Vec<Expression>, offset: &mut i32) {
-    let mut iter = li1.into_iter();
+fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
+    let mut iter = cst.into_iter();
 
     let e1 = iter.next();
     let op = match e1 {
@@ -90,18 +89,16 @@ fn eval(ops: &mut String, li1: Vec<Expression>, offset: &mut i32) {
 
     let mut buf_size: i32 = 0;
 
-    let mut map: HashMap<String, Variable> = HashMap::new();
-
     for (i, item) in iter.enumerate() {
         match item {
             Expression::Atom(s) => {
                 match op {
                     Op::Syscall => {
                         match i {
-                            0 => {code!(ops, "    movq {}, %rax\n", s);},
-                            1 => {code!(ops, "    movq {}, %rdi\n", s);},
-                            2 => {code!(ops, "    leaq {}, %rsi\n", s);},
-                            3 => {code!(ops, "    movq {}, %rdx\n", s);},
+                            0 => {code!(state, "    movq {}, %rax\n", s);},
+                            1 => {code!(state, "    movq {}, %rdi\n", s);},
+                            2 => {code!(state, "    leaq {}, %rsi\n", s);},
+                            3 => {code!(state, "    movq {}, %rdx\n", s);},
                             ignore => {warning!("Arg ignored `{}`", ignore)},
                         }
                     },
@@ -109,15 +106,15 @@ fn eval(ops: &mut String, li1: Vec<Expression>, offset: &mut i32) {
                         match i {
                             0 => {
                                 buf_size = s.parse::<i32>().unwrap();
-                                *offset += buf_size;
+                                state.offset += buf_size;
                             },
                             1 => {
                                 let v = Variable {
                                     name: s.to_string(),
-                                    stack_pos: *offset,
+                                    stack_pos: state.offset,
                                     t: Type::Buf(buf_size)
                                 };
-                                map.insert(s, v);
+                                state.var_map.insert(s, v);
                             },
                             ignore => {warning!("Arg ignored `{}`", ignore)},
                         }
@@ -125,25 +122,25 @@ fn eval(ops: &mut String, li1: Vec<Expression>, offset: &mut i32) {
                     Op::U32 => {
                         match i {
                             0 => {
-                                *offset += 4;
+                                state.offset += 4;
                                 let v = Variable {
                                     name: s.to_string(),
-                                    stack_pos: *offset,
+                                    stack_pos: state.offset,
                                     t: Type::U32
                                 };
-                                map.insert(s, v);
+                                state.var_map.insert(s, v);
                             },
                             1 => {
-                                code!(ops, "    movl ${}, -{}(%rsp)\n", s, offset);
+                                code!(state, "    movl ${}, -{}(%rsp)\n", s, state.offset);
                             },
                             ignore => {warning!("Arg ignored `{}`", ignore)},
                         }
                     },
                     _ => {
                         if i == 0 {
-                            code!(ops, "    movl ${}, %eax\n", s);
+                            code!(state, "    movl ${}, %eax\n", s);
                         } else {
-                            code!(ops, "    {} ${}, %eax\n", asm, s);
+                            code!(state, "    {} ${}, %eax\n", asm, s);
                         }
                     },
                 }
@@ -155,13 +152,13 @@ fn eval(ops: &mut String, li1: Vec<Expression>, offset: &mut i32) {
                     },
                     _ => {
                         if i == 0 {
-                            eval(ops, li2, offset);
+                            eval(state, li2);
                         } else {
-                            code!(ops, "    pushq %rax\n");
-                            eval(ops, li2, offset);
-                            code!(ops, "    movl %eax, %ecx\n");
-                            code!(ops, "    popq %rax\n");
-                            code!(ops, "    {} %ecx, %eax\n", asm);
+                            code!(state, "    pushq %rax\n");
+                            eval(state, li2);
+                            code!(state, "    movl %eax, %ecx\n");
+                            code!(state, "    popq %rax\n");
+                            code!(state, "    {} %ecx, %eax\n", asm);
                         }
                     },
                 }
@@ -170,24 +167,14 @@ fn eval(ops: &mut String, li1: Vec<Expression>, offset: &mut i32) {
     }
     match op {
         Op::Syscall => {
-            code!(ops, "    syscall\n");
-            code!(ops, "    retq\n");
+            code!(state, "    syscall\n");
+            code!(state, "    retq\n");
         },
         _ => {},
     }
-
-    for k in map.keys() {
-        println!("KEY: {}", k);
-    }
-    for v in map.values() {
-        println!("VAL: {:?}", v);
-    }
-
-    let ret = map.get("one");
-    dbg!(ret);
 }
 
-pub fn encode(_cst: Vec<Expression>, _filename: String) {
+pub fn encode(cst: Vec<Expression>, _filename: String) {
 
     let full_name = format!("ignore/asm.s");
     let mut file = match File::create(&full_name) {
@@ -213,44 +200,35 @@ _start:
         buf.append(&mut d1);
     }
 
-    let mut stack_offset: i32 = 0;
+    let mut state = CompilationState {
+        ops: String::new(),
+        offset: 0,
+        var_map: HashMap::new()
+    };
 
-    // let mut cs = CompState {
-        // ops: String::new(),
-        // cst: _cst,
-        // offset: 0,
-        // state: HashMap::new()
-    // }
-
-
-    // eval(&mut cs);
-
-    for item in _cst.into_iter() {
+    for item in cst.into_iter() {
         match item {
             Expression::List(v) => {
-                let mut ops = String::new();
-                eval(&mut ops, v, &mut stack_offset);
-                let mut vec = Vec::from(ops);
-                // println!("{:?}", &vec);
-                buf.append(&mut vec);
+                eval(&mut state, v);
             },
             Expression::Atom(s) => {
                 warning!("Top level Atom `{}` ignored.", s);
             },
         }
     }
+    let mut vec = Vec::from(state.ops);
+    buf.append(&mut vec);
 
-    // {
-        // let ops = String::from("745\n");
-        // let a: Vec<u8> = Vec::from(ops);
-        // println!("{:?}", &a);
-        // let b: Vec<u8> = Vec::from([7, 4, 5]);
-        // println!("{:?}", &b);
-        // println!("754: {:b}", 745);
-        // println!("7  : {:b}", 7);
-        // println!(" 5 : {:b}", 4);
-        // println!("  4: {:b}", 5);
-    // }
+    {
+        for k in state.var_map.keys() {
+            println!("KEY: {}", k);
+        }
+        for v in state.var_map.values() {
+            println!("VAL: {:?}", v);
+        }
+        let ret = state.var_map.get("one");
+        dbg!(ret);
+    }
 
     {
     let mut d1 = Vec::from("
