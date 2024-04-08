@@ -18,6 +18,7 @@ enum Op {
     Add,
     Sub,
     Mul,
+    Print
 }
 
 macro_rules! code {
@@ -53,10 +54,11 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
     };
 
     let asm = match op {
-        Op::Add =>   {["addl"]},
-        Op::Sub =>   {["subl"]},
-        Op::Mul =>   {["imul"]},
+        Op::Add =>   {"addl"},
+        Op::Sub =>   {"subl"},
+        Op::Mul =>   {"imul"},
         Op::False => {todo!()},
+        Op::Print => {todo!()},
     };
 
     // #[allow(unused_mut, unused_variables)] // remove later
@@ -65,21 +67,33 @@ fn list(ops: &mut String, li1: Vec<Expression>) {
     for (i, item) in iter.enumerate() {
         match item {
             Expression::Atom(s) => {
-                if i == 0 {
-                    code!(ops, "    movl ${}, %eax\n", s);
-                } else {
-                    code!(ops, "    {} ${}, %eax\n", asm[0], s);
+                match op {
+                    Op::Print => {
+                    },
+                    _ => {
+                        if i == 0 {
+                            code!(ops, "    movl ${}, %eax\n", s);
+                        } else {
+                            code!(ops, "    {} ${}, %eax\n", asm, s);
+                        }
+                    },
                 }
             },
             Expression::List(li2) => {
-                if i == 0 {
-                    list(ops, li2);
-                } else {
-                    code!(ops, "    pushq %rax\n");
-                    list(ops, li2);
-                    code!(ops, "    movl %eax, %ecx\n");
-                    code!(ops, "    popq %rax\n");
-                    code!(ops, "    {} %ecx, %eax\n", asm[0]);
+                match op {
+                    Op::Print => {
+                    },
+                    _ => {
+                        if i == 0 {
+                            list(ops, li2);
+                        } else {
+                            code!(ops, "    pushq %rax\n");
+                            list(ops, li2);
+                            code!(ops, "    movl %eax, %ecx\n");
+                            code!(ops, "    popq %rax\n");
+                            code!(ops, "    {} %ecx, %eax\n", asm);
+                        }
+                    },
                 }
             },
         };
@@ -127,11 +141,17 @@ _start:
         }
     }
 
-    // {
-        // let ops = String::from("\r\n");
-        // let mut vec = Vec::from(ops);
-        // println!("{:?}", &vec);
-    // }
+    {
+        let ops = String::from("745\n");
+        let a: Vec<u8> = Vec::from(ops);
+        println!("{:?}", &a);
+        let b: Vec<u8> = Vec::from([7, 4, 5]);
+        println!("{:?}", &b);
+        println!("754: {:b}", 745);
+        println!("7  : {:b}", 7);
+        println!(" 5 : {:b}", 4);
+        println!("  4: {:b}", 5);
+    }
 
     {
         let mut d1 = Vec::from("
