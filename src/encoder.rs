@@ -10,6 +10,7 @@ use crate::parser::Expression;
 use lasmc::{error, system, warning};
 
 #[allow(dead_code)]
+#[derive(Debug)]
 enum Op {
     False,
     Add,
@@ -36,6 +37,17 @@ struct Variable {
     t: Type,
 }
 
+macro_rules! check_if_var {
+    ($cs:ident, $arg:tt) => (
+        match $cs.var_map.get(&$arg) {
+            Some(var) => {
+                format!("-{}(%rsp)", var.stack_pos)
+            },
+            None => format!("${}", $arg)
+        }
+    )
+}
+
 macro_rules! code {
     ($cs:ident, $fmt:expr) => (
         $cs.ops.push_str($fmt);
@@ -53,6 +65,7 @@ struct CompilationState {
 }
 
 fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
+    dbg!(&cst);
     let mut iter = cst.into_iter();
 
     let e1 = iter.next();
@@ -77,15 +90,18 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
             exit(1)
         },
     };
+    dbg!(&op);
 
     let asm = match op {
         Op::Add =>   {"addl"},
         Op::Sub =>   {"subl"},
         Op::Mul =>   {"imul"},
-        _ => {""},
+        ref _o => {
+            // dbg!(&_o);
+            ""
+        },
     };
-
-
+    dbg!(&asm);
 
     let mut buf_size: i32 = 0;
 
@@ -95,16 +111,35 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
                 match op {
                     Op::Syscall => {
                         match i {
-                            0 => {code!(state, "    movq {}, %rax\n", s);},
-                            1 => {code!(state, "    movq {}, %rdi\n", s);},
-                            2 => {code!(state, "    leaq {}, %rsi\n", s);},
-                            3 => {code!(state, "    movq {}, %rdx\n", s);},
+                            0 => {
+                                let v = check_if_var!(state, s);
+                                code!(state, "    movq {}, %rax\n", v);
+                            },
+                            1 => {
+                                let v = check_if_var!(state, s);
+                                code!(state, "    movq {}, %rdi\n", v);
+                            },
+                            2 => {
+                                let v = check_if_var!(state, s);
+                                code!(state, "    leaq {}, %rsi\n", v);
+                            },
+                            3 => {
+                                let v = check_if_var!(state, s);
+                                code!(state, "    movq {}, %rdx\n", v);
+                            },
                             ignore => {warning!("Arg ignored `{}`", ignore)},
                         }
                     },
                     Op::Alloc => {
                         match i {
                             0 => {
+                                // match $cs.var_map.get(&$arg) {
+                                    // Some(var) => {
+                                        // format!("-{}(%rsp)", var.stack_pos)
+                                    // },
+                                    // None => format!("${}", $arg)
+                                // }
+                                // let v = check_if_var!(state, s);
                                 buf_size = s.parse::<i32>().unwrap();
                                 state.offset += buf_size;
                             },
@@ -131,16 +166,19 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
                                 state.var_map.insert(s, v);
                             },
                             1 => {
-                                code!(state, "    movl ${}, -{}(%rsp)\n", s, state.offset);
+                                let v = check_if_var!(state, s);
+                                code!(state, "    movl {}, -{}(%rsp)\n", v, state.offset);
                             },
                             ignore => {warning!("Arg ignored `{}`", ignore)},
                         }
                     },
                     _ => {
                         if i == 0 {
-                            code!(state, "    movl ${}, %eax\n", s);
+                            let v = check_if_var!(state, s);
+                            code!(state, "    movl {}, %eax\n", v);
                         } else {
-                            code!(state, "    {} ${}, %eax\n", asm, s);
+                            let v = check_if_var!(state, s);
+                            code!(state, "    {} {}, %eax\n", asm, v);
                         }
                     },
                 }
@@ -150,10 +188,19 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
                     Op::Syscall => {
                         todo!()
                     },
+                    Op::U32 => {
+                        if i == 0 {
+                            todo!()
+                        } else {
+                            eval(state, li2);
+                            code!(state, "    movl %eax, -{}(%rsp)\n", state.offset);
+                        }
+                    },
                     _ => {
                         if i == 0 {
                             eval(state, li2);
                         } else {
+                            // dbg!(&op);
                             code!(state, "    pushq %rax\n");
                             eval(state, li2);
                             code!(state, "    movl %eax, %ecx\n");
@@ -175,6 +222,7 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
 }
 
 pub fn encode(cst: Vec<Expression>, _filename: String) {
+    todo!();
 
     let full_name = format!("ignore/asm.s");
     let mut file = match File::create(&full_name) {
@@ -219,16 +267,16 @@ _start:
     let mut vec = Vec::from(state.ops);
     buf.append(&mut vec);
 
-    {
-        for k in state.var_map.keys() {
-            println!("KEY: {}", k);
-        }
-        for v in state.var_map.values() {
-            println!("VAL: {:?}", v);
-        }
-        let ret = state.var_map.get("one");
-        dbg!(ret);
-    }
+    // {
+        // for k in state.var_map.keys() {
+            // println!("KEY: {}", k);
+        // }
+        // for v in state.var_map.values() {
+            // println!("VAL: {:?}", v);
+        // }
+        // let ret = state.var_map.get("one");
+        // dbg!(ret);
+    // }
 
     {
     let mut d1 = Vec::from("

@@ -8,6 +8,7 @@ use lasmc::{error, warning};
 #[derive(Debug)]
 pub enum Expression {
     Atom(String),
+    // Var(String),
     List(Vec<Expression>),
 }
 

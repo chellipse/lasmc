@@ -50,6 +50,9 @@ in
     }
 
     debug() {
+        gcc $1 -c -g -o $DEBUG_DIR/main.o \
+        && ld $DEBUG_DIR/main.o -o $DEBUG_DIR/main \
+        && ./$DEBUG_DIR/main
         gdb ./$DEBUG_DIR/main
     }
 
