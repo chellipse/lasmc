@@ -1,29 +1,12 @@
 mod lexer;
 use lexer::Token;
 
-use lasmc::{error, warning};
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub enum Op {
-    False,
-    Add,
-    Sub,
-    Mul,
-    Print,
-    Syscall,
-    Alloc,
-    U32,
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub enum Expression {
-    Key(Op),
-    Imm(String),
-    Var(String),
-    List(Vec<Expression>),
-}
+use lasmc::{
+    error,
+    warning,
+    Expression,
+    Op
+};
 
 fn parse_vec(input: &[Token]) -> (usize, Expression) {
     let mut collector: Vec<Expression> = vec![];
