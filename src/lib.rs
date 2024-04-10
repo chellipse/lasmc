@@ -43,7 +43,7 @@ pub fn read_input_file(filepath: String) -> String {
         Err(e) => {
             error!("reading `{}` returned `{}`", filepath, e);
             filepath.clone()
-        },
+        }
     }
 }
 
@@ -75,4 +75,3 @@ pub fn get_args() -> Args {
         file_name: name.to_string(),
     }
 }
-

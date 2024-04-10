@@ -1,7 +1,7 @@
 // use crate::parser::{Expression, Op};
 
-mod parser;
 mod encoder;
+mod parser;
 
 #[allow(unused_imports)]
 use lasmc::{error, system, warning};
@@ -9,30 +9,30 @@ use lasmc::{error, system, warning};
 use lasmc::{get_args, read_input_file};
 
 // fn tree_pass(cst: &mut Vec<Expression>) {
-    // for node in cst.iter_mut() {
-        // match node {
-            // Expression::Imm(s) => {
-                // match s.as_str() {
-                    // "+" => { *node = Expression::Key(Op::Add); },
-                    // "-" => { *node = Expression::Key(Op::Sub); },
-                    // "*" => { *node = Expression::Key(Op::Mul); },
-                    // "syscall" => { *node = Expression::Key(Op::Syscall); },
-                    // "alloc" => { *node = Expression::Key(Op::Alloc); },
-                    // "u32" => { *node = Expression::Key(Op::U32); },
-                    // x if x.parse::<u32>().is_ok() => {
-                        // *node = Expression::Imm(s.clone());
-                    // },
-                    // _ => {
-                        // *node = Expression::Var(s.clone());
-                    // },
-                // }
-            // },
-            // Expression::List(li) => {
-                // tree_pass(li);
-            // },
-            // _ => {},
-        // }
-    // }
+// for node in cst.iter_mut() {
+// match node {
+// Expression::Imm(s) => {
+// match s.as_str() {
+// "+" => { *node = Expression::Key(Op::Add); },
+// "-" => { *node = Expression::Key(Op::Sub); },
+// "*" => { *node = Expression::Key(Op::Mul); },
+// "syscall" => { *node = Expression::Key(Op::Syscall); },
+// "alloc" => { *node = Expression::Key(Op::Alloc); },
+// "u32" => { *node = Expression::Key(Op::U32); },
+// x if x.parse::<u32>().is_ok() => {
+// *node = Expression::Imm(s.clone());
+// },
+// _ => {
+// *node = Expression::Var(s.clone());
+// },
+// }
+// },
+// Expression::List(li) => {
+// tree_pass(li);
+// },
+// _ => {},
+// }
+// }
 // }
 
 fn main() {
@@ -50,4 +50,3 @@ fn main() {
 
     encoder::encode(cst, args.file_name);
 }
-

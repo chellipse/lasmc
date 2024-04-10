@@ -1,7 +1,7 @@
 let
   rust_overlay = import (builtins.fetchTarball "https://github.com/oxalica/rust-overlay/archive/master.tar.gz");
 
-  pkgs = import <nixos-unstable> { overlays = [ rust_overlay ]; };
+  pkgs = import <nixpkgs> { overlays = [ rust_overlay ]; };
 
   # rust = pkgs.rust-bin.stable.latest.default.override {
     # extensions = [ "rust-src" "rustc-codegen-cranelift-preview" ];

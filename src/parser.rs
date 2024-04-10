@@ -1,4 +1,3 @@
-
 mod lexer;
 use lexer::Token;
 
@@ -38,15 +37,15 @@ fn parse_vec(input: &[Token]) -> (usize, Expression) {
                 let (l, recursive_output) = parse_vec(&input[i..]);
                 i += l;
                 collector.push(recursive_output);
-            },
+            }
             Token::RightParen => {
                 i += 1;
-                break
-            },
+                break;
+            }
             Token::Atom(s) => {
                 i += 1;
                 collector.push(Expression::Imm(s.clone()));
-            },
+            }
         }
     }
     let output: Expression = Expression::List(collector);
@@ -56,30 +55,39 @@ fn parse_vec(input: &[Token]) -> (usize, Expression) {
 fn tree_pass(cst: &mut Vec<Expression>) {
     for node in cst.iter_mut() {
         match node {
-            Expression::Imm(s) => {
-                match s.as_str() {
-                    "+" => { *node = Expression::Key(Op::Add); },
-                    "-" => { *node = Expression::Key(Op::Sub); },
-                    "*" => { *node = Expression::Key(Op::Mul); },
-                    "syscall" => { *node = Expression::Key(Op::Syscall); },
-                    "alloc" => { *node = Expression::Key(Op::Alloc); },
-                    "u32" => { *node = Expression::Key(Op::U32); },
-                    x if x.parse::<u32>().is_ok() => {
-                        *node = Expression::Imm(s.clone());
-                    },
-                    _ => {
-                        *node = Expression::Var(s.clone());
-                    },
+            Expression::Imm(s) => match s.as_str() {
+                "+" => {
+                    *node = Expression::Key(Op::Add);
+                }
+                "-" => {
+                    *node = Expression::Key(Op::Sub);
+                }
+                "*" => {
+                    *node = Expression::Key(Op::Mul);
+                }
+                "syscall" => {
+                    *node = Expression::Key(Op::Syscall);
+                }
+                "alloc" => {
+                    *node = Expression::Key(Op::Alloc);
+                }
+                "u32" => {
+                    *node = Expression::Key(Op::U32);
+                }
+                x if x.parse::<u32>().is_ok() => {
+                    *node = Expression::Imm(s.clone());
+                }
+                _ => {
+                    *node = Expression::Var(s.clone());
                 }
             },
             Expression::List(li) => {
                 tree_pass(li);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }
-
 
 pub fn parse(input: String) -> Vec<Expression> {
     let lexed = lexer::lex(input);
@@ -95,17 +103,16 @@ pub fn parse(input: String) -> Vec<Expression> {
                 let (l, recursive_output) = parse_vec(&lexed[i..]);
                 i += l;
                 output.push(recursive_output);
-            },
+            }
             Token::RightParen => {
                 error!("Unmatched ')' at {}", i);
-            },
+            }
             Token::Atom(_) => {
                 warning!("Ignored Atom at {}", i);
                 i += 1;
-            },
+            }
         }
     }
     tree_pass(&mut output);
     output
 }
-
