@@ -4,23 +4,23 @@ use std::process::exit;
 use std::collections::HashMap;
 
 // local module
-use crate::parser::Expression;
+use crate::parser::{Expression, Op};
 
 #[allow(unused_imports)]
 use lasmc::{error, system, warning};
 
-#[allow(dead_code)]
-#[derive(Debug)]
-enum Op {
-    False,
-    Add,
-    Sub,
-    Mul,
-    Print,
-    Syscall,
-    Alloc,
-    U32,
-}
+// #[allow(dead_code)]
+// #[derive(Debug)]
+// pub enum Op {
+    // False,
+    // Add,
+    // Sub,
+    // Mul,
+    // Print,
+    // Syscall,
+    // Alloc,
+    // U32,
+// }
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -65,124 +65,30 @@ struct CompilationState {
 }
 
 fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
-    dbg!(&cst);
+    // dbg!(&cst);
     let mut iter = cst.into_iter();
 
     let e1 = iter.next();
-    let op = match e1 {
-        Some(Expression::Atom(s)) => {
-            match s.as_str() {
-                "+" => {Op::Add},
-                "-" => {Op::Sub},
-                "*" => {Op::Mul},
-                "syscall" => {Op::Syscall},
-                "alloc" => {Op::Alloc},
-                "u32" => {Op::U32},
-                invalid => {
-                    error!("Invalid Operator `{}`", invalid);
-                    exit(1)
-                },
-            }
+    let op: Op = match e1 {
+        Some(Expression::Key(kw)) => {
+            kw
         },
-        None => {Op::False},
-        Some(Expression::List(v)) => {
-            error!("List found where keyword should be! `{:?}`", v);
-            exit(1)
-        },
+        _ => {todo!()},
     };
-    dbg!(&op);
+    // dbg!(&op);
 
     let asm = match op {
-        Op::Add =>   {"addl"},
-        Op::Sub =>   {"subl"},
-        Op::Mul =>   {"imul"},
-        ref _o => {
-            // dbg!(&_o);
-            ""
-        },
+        Op::Add => {"addl"},
+        Op::Sub => {"subl"},
+        Op::Mul => {"imul"},
+        ref _o  => {""},
     };
-    dbg!(&asm);
+    // dbg!(&asm);
 
     let mut buf_size: i32 = 0;
 
     for (i, item) in iter.enumerate() {
         match item {
-            Expression::Atom(s) => {
-                match op {
-                    Op::Syscall => {
-                        match i {
-                            0 => {
-                                let v = check_if_var!(state, s);
-                                code!(state, "    movq {}, %rax\n", v);
-                            },
-                            1 => {
-                                let v = check_if_var!(state, s);
-                                code!(state, "    movq {}, %rdi\n", v);
-                            },
-                            2 => {
-                                let v = check_if_var!(state, s);
-                                code!(state, "    leaq {}, %rsi\n", v);
-                            },
-                            3 => {
-                                let v = check_if_var!(state, s);
-                                code!(state, "    movq {}, %rdx\n", v);
-                            },
-                            ignore => {warning!("Arg ignored `{}`", ignore)},
-                        }
-                    },
-                    Op::Alloc => {
-                        match i {
-                            0 => {
-                                // match $cs.var_map.get(&$arg) {
-                                    // Some(var) => {
-                                        // format!("-{}(%rsp)", var.stack_pos)
-                                    // },
-                                    // None => format!("${}", $arg)
-                                // }
-                                // let v = check_if_var!(state, s);
-                                buf_size = s.parse::<i32>().unwrap();
-                                state.offset += buf_size;
-                            },
-                            1 => {
-                                let v = Variable {
-                                    name: s.to_string(),
-                                    stack_pos: state.offset,
-                                    t: Type::Buf(buf_size)
-                                };
-                                state.var_map.insert(s, v);
-                            },
-                            ignore => {warning!("Arg ignored `{}`", ignore)},
-                        }
-                    },
-                    Op::U32 => {
-                        match i {
-                            0 => {
-                                state.offset += 4;
-                                let v = Variable {
-                                    name: s.to_string(),
-                                    stack_pos: state.offset,
-                                    t: Type::U32
-                                };
-                                state.var_map.insert(s, v);
-                            },
-                            1 => {
-                                let v = check_if_var!(state, s);
-                                code!(state, "    movl {}, -{}(%rsp)\n", v, state.offset);
-                            },
-                            ignore => {warning!("Arg ignored `{}`", ignore)},
-                        }
-                    },
-                    _ => {
-                        if i == 0 {
-                            let v = check_if_var!(state, s);
-                            code!(state, "    movl {}, %eax\n", v);
-                        } else {
-                            let v = check_if_var!(state, s);
-                            code!(state, "    {} {}, %eax\n", asm, v);
-                        }
-                    },
-                }
-            },
             Expression::List(li2) => {
                 match op {
                     Op::Syscall => {
@@ -210,6 +116,131 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
                     },
                 }
             },
+            Expression::Imm(s) => {
+                match op {
+                    Op::Syscall => {
+                        match i {
+                            0 => {
+                                code!(state, "    movq {}, %rax\n", s);
+                            },
+                            1 => {
+                                code!(state, "    movq {}, %rdi\n", s);
+                            },
+                            2 => {
+                                code!(state, "    leaq {}, %rsi\n", s);
+                            },
+                            3 => {
+                                code!(state, "    movq {}, %rdx\n", s);
+                            },
+                            ignore => {warning!("Arg ignored `{}`", ignore)},
+                        }
+                    },
+                    Op::Alloc => {
+                        match i {
+                            0 => {
+                                buf_size = s.parse::<i32>().unwrap();
+                                state.offset += buf_size;
+                            },
+                            1 => {
+                                error!("Alloc identifier must be a variable name: {:?}", s);
+                            },
+                            ignore => {warning!("Arg ignored `{}`", ignore)},
+                        }
+                    },
+                    Op::U32 => {
+                        match i {
+                            0 => {
+                                error!("U32 identifier must be a variable name: {:?}", s);
+                            },
+                            1 => {
+                                code!(state, "    movl {}, -{}(%rsp)\n", s, state.offset);
+                            },
+                            ignore => {warning!("Arg ignored `{}`", ignore)},
+                        }
+                    },
+                    _ => {
+                        if i == 0 {
+                            let v = check_if_var!(state, s);
+                            code!(state, "    movl {}, %eax\n", v);
+                        } else {
+                            let v = check_if_var!(state, s);
+                            code!(state, "    {} {}, %eax\n", asm, v);
+                        }
+                    },
+                }
+            },
+            Expression::Var(v) => {
+                match op {
+                    Op::Syscall => {
+                        match i {
+                            0 => {
+                                let v = check_if_var!(state, v);
+                                code!(state, "    movq {}, %rax\n", v);
+                            },
+                            1 => {
+                                let v = check_if_var!(state, v);
+                                code!(state, "    movq {}, %rdi\n", v);
+                            },
+                            2 => {
+                                let v = check_if_var!(state, v);
+                                code!(state, "    leaq {}, %rsi\n", v);
+                            },
+                            3 => {
+                                let v = check_if_var!(state, v);
+                                code!(state, "    movq {}, %rdx\n", v);
+                            },
+                            ignore => {warning!("Arg ignored `{}`", ignore)},
+                        }
+                    },
+                    Op::Alloc => {
+                        match i {
+                            0 => {
+                                let v = check_if_var!(state, v);
+                                buf_size = v.parse::<i32>().unwrap();
+                                state.offset += buf_size;
+                            },
+                            1 => {
+                                let var = Variable {
+                                    name: v.to_string(),
+                                    stack_pos: state.offset,
+                                    t: Type::Buf(buf_size)
+                                };
+                                state.var_map.insert(v, var);
+                            },
+                            ignore => {warning!("Arg ignored `{}`", ignore)},
+                        }
+                    },
+                    Op::U32 => {
+                        match i {
+                            0 => {
+                                state.offset += 4;
+                                let var = Variable {
+                                    name: v.to_string(),
+                                    stack_pos: state.offset,
+                                    t: Type::U32
+                                };
+                                state.var_map.insert(v, var);
+                            },
+                            1 => {
+                                let v = check_if_var!(state, v);
+                                code!(state, "    movl {}, -{}(%rsp)\n", v, state.offset);
+                            },
+                            ignore => {warning!("Arg ignored `{}`", ignore)},
+                        }
+                    },
+                    _ => {
+                        if i == 0 {
+                            code!(state, "    movl {}, %eax\n", v);
+                        } else {
+                            code!(state, "    {} {}, %eax\n", asm, v);
+                        }
+                    },
+                }
+            },
+            Expression::Key(kw) => {
+                error!("Unexpected keyword: `{:?}`", kw);
+                std::process::exit(1);
+            },
         };
     }
     match op {
@@ -222,7 +253,6 @@ fn eval(state: &mut CompilationState, cst: Vec<Expression>) {
 }
 
 pub fn encode(cst: Vec<Expression>, _filename: String) {
-    todo!();
 
     let full_name = format!("ignore/asm.s");
     let mut file = match File::create(&full_name) {
@@ -259,8 +289,8 @@ _start:
             Expression::List(v) => {
                 eval(&mut state, v);
             },
-            Expression::Atom(s) => {
-                warning!("Top level Atom `{}` ignored.", s);
+            other => {
+                warning!("Top level Atom `{:?}` ignored.", other);
             },
         }
     }
